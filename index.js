@@ -13,9 +13,10 @@ exports.handler = async(event, context, callback) => {
   }
 };
 
-async function getSsmParam(key) {
+async function getSsmParam(key, decrypted = false) {
   const param = await ssm.getParameter({
-    Name: key
+    Name: key,
+    WithDecryption: decrypted
   }).promise();
   return param.Parameter.Value;
 }
@@ -23,10 +24,10 @@ async function getSsmParam(key) {
 // request to ifttt
 async function requestIfttt(key) {
   const https = require("https");
-  const iftttKey = await getSsmParam('ifttt_key');
+  const iftttKey = await getSsmParam('ifttt_key', true);
   return new Promise((resolve, reject) => {
     https.get(
-      `https://maker.ifttt.com/trigger/${key}/with/key/${ifttt_key}`,
+      `https://maker.ifttt.com/trigger/${key}/with/key/${iftttKey}`,
       res => resolve(res.statusCode)
     ).on("error", e => reject(e));
   })
@@ -82,11 +83,6 @@ async function handlePowerControl(event, context) {
   const requestMethod = event.directive.header.name;
   const responseHeader = event.directive.header;
 
-  responseHeader.namespace = "Alexa";
-  responseHeader.name = "Response";
-  responseHeader.messageId = responseHeader.messageId + "-R";
-
-  const requestToken = event.directive.endpoint.scope.token;
   let requestResult;
   let powerResult;
 
